@@ -44,7 +44,8 @@ class EventOutcomeControllerTest {
         kafkaTestConsumer.consumeOne(
             KafkaTopics.EVENT_OUTCOMES,
             Duration.of(10, ChronoUnit.SECONDS),
-            consumerRecord -> consumerRecord.value().toString().contains(request.eventId()));
+            consumerRecord ->
+                consumerRecord.value().eventId().toString().equals(request.eventId()));
     EventOutcomeMessage kafkaMessage = objectObjectConsumerRecord.get().value();
 
     Assertions.assertEquals(request.eventId(), kafkaMessage.eventId().toString());

@@ -1,0 +1,124 @@
+services:
+  kafka:
+    image: apache/kafka:4.2.1
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:29092,EXTERNAL://localhost:9092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:29093"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_KRAFT_CLUSTER_ID: "ciWo7IWazngRchmPES6q5A=="
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_LISTENERS: "INTERNAL://kafka:29092,CONTROLLER://kafka:29093,EXTERNAL://0.0.0.0:9092"
+      KAFKA_NODE_ID: "1"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+    ports:
+      - "9092:9092"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: "1G"
+    healthcheck:
+      test: [ "CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list" ]
+      interval: 10s
+      retries: 5
+      timeout: 10s
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_NAME: local
+    ports:
+      - "8090:8080"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: "1G"
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider localhost:8080 || exit 1
+      interval: 10s
+      retries: 5
+      timeout: 10s
+
+  rocketmq-namesrv:
+    image: apache/rocketmq:5.5.0
+    ports:
+      - "9876:9876"
+    restart: always
+    networks:
+      - betting
+    command: sh mqnamesrv
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: "1G"
+    healthcheck:
+      test: [ "CMD-SHELL", "timeout 3 bash -c '</dev/tcp/localhost/9876' || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  rocketmq-broker:
+    image: apache/rocketmq:5.5.0
+    depends_on:
+      - rocketmq-namesrv
+    ports:
+      - "10909:10909"
+      - "10911:10911"
+      - "10912:10912"
+    restart: always
+    environment:
+      - NAMESRV_ADDR=rocketmq-namesrv:9876
+      - JAVA_OPTS=-Drocketmq.broker.autoCreateTopicEnable=true
+    networks:
+      - betting
+    command: sh mqbroker
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: "2G"
+    healthcheck:
+      test: [ "CMD-SHELL", "sh mqadmin brokerStatus -n rocketmq-namesrv:9876 -b localhost:10911 > /dev/null 2>&1 || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  rocketmq-dashboard:
+    image: apacherocketmq/rocketmq-dashboard:latest
+    ports:
+      - "8082:8082"
+    restart: always
+    environment:
+      - JAVA_OPTS=-Drocketmq.namesrv.addr=rocketmq-namesrv:9876
+    depends_on:
+      - rocketmq-namesrv
+    networks:
+      - betting
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: "1G"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q --spider http://localhost:8082/ || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+networks:
+  betting:
+    driver: bridge

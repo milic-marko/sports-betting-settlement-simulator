@@ -20,9 +20,9 @@ Prerequisite for running the app
 
 - [`Java`](https://adoptium.net)
 - [`Container runtime (e.g., Docker, Podman)`](https://opencontainers.org)
-- [`Intellij`](https://www.jetbrains.com/idea) or [`VSCode`](https://code.visualstudio.com)
+- [`Intellij`](https://www.jetbrains.com/idea)
 
-You can run/debug the project by selecting the Intellij/VSCode Run Configuration:
+You can run/debug the project by selecting the Intellij Run Configuration:
 
 - **betting-core**
 

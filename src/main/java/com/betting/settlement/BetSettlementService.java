@@ -28,6 +28,7 @@ class BetSettlementService {
     Bet bet = optionalBet.get();
     if (bet.isSettled()) {
       log.info("Bet is already settled, skipping, betId: [ {} ]", bet.getBetId());
+      return;
     }
 
     bet = bet.settle(message.eventWinnerId());
